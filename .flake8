@@ -1,0 +1,6 @@
+[flake8]
+extend-ignore = E203, W503
+max-line-length = 130
+per_file_ignores =
+    # Ignore line length errors on generated migration files
+    */migrations/*:E501

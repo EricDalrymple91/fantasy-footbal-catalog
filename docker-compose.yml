@@ -1,0 +1,76 @@
+version: "3.9"
+
+x-service:
+  &default-service
+  entrypoint: pytest
+  build: .
+  environment:
+    DJANGO_SETTINGS_MODULE: fantasy_football_catalog.settings
+  image: fantasy-football-catalog:latest
+  restart: "no"
+  depends_on:
+    db:
+      condition: service_started
+  networks:
+    - db
+  working_dir: /ffcatalog
+  volumes:
+    - .:/ffcatalog
+
+services:
+  test:
+    <<: *default-service
+    environment:
+      DJANGO_SETTINGS_MODULE: fantasy_football_catalog.settings
+    entrypoint: pytest -s
+
+  migrate:
+    <<: *default-service
+    entrypoint: django-admin migrate
+
+  makemigrations:
+    <<: *default-service
+    entrypoint: django-admin makemigrations
+
+  manage:
+    <<: *default-service
+    entrypoint: python manage.py
+
+  python:
+    <<: *default-service
+    entrypoint: python
+
+  shell:
+    <<: *default-service
+    entrypoint: python manage.py shell
+
+  dbshell:
+    <<: *default-service
+    entrypoint: python manage.py dbshell
+
+  runserver:
+    <<: *default-service
+    entrypoint: python manage.py runserver 0.0.0.0:8000
+    stdin_open: true
+    ports:
+      - "8000:8000"
+
+  bash:
+    <<: *default-service
+    entrypoint: /bin/bash
+
+  db:
+    image: keinos/sqlite3:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/root/db/
+    networks:
+      - db
+
+volumes:
+  db_data:
+
+networks:
+  db:

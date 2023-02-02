@@ -1,0 +1,5 @@
+Django==4.1.6
+pytest==7.2.1
+pendulum==2.1.2
+ipdb==0.13.11
+pytest-django==4.5.2
