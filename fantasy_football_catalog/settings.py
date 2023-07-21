@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_celery_results",
     "fantasy_football_catalog.apps.catalog",
 ]
 
@@ -122,3 +123,28 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CELERY_APP = "fantasy_football_catalog.celery_app.default_celery_app"
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': '/var/tmp/django_cache',
+    },
+    "redis": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://redis:6379/0",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    },
+}
+
+# ENABLE FOR REAL ASYNC CELERY TASKS USING DOCKER COMPOSE RABBITMQ SERVICE
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_BROKER_USE_SSL = False
+CELERY_BROKER_URL = "amqp://guest:guest@rabbitmq:5672/"
+CELERY_RESULT_BACKEND = "django-cache"
+CELERY_CACHE_BACKEND = "redis"
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_EXPIRES = 30

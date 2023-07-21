@@ -11,8 +11,12 @@ x-service:
   depends_on:
     db:
       condition: service_started
+    redis:
+      condition: service_started
   networks:
     - db
+    - redis
+    - rabbitmq
   working_dir: /ffcatalog
   volumes:
     - .:/ffcatalog
@@ -69,8 +73,34 @@ services:
     networks:
       - db
 
+  redis:
+    # aws elasticache is compatible with redis 5
+    image: redis:5 # x86 and aarch64 compatible
+    restart: always
+    networks:
+      - redis
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    hostname: my-rabbit
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - ./rabbitmq/etc/definitions.json:/etc/rabbitmq/definitions.json
+      - ./rabbitmq/etc/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/data:/var/lib/rabbitmq
+      - ./rabbitmq/logs:/var/log/rabbitmq/log
+    networks:
+      - rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+
 volumes:
   db_data:
 
 networks:
   db:
+  redis:
+  rabbitmq:
