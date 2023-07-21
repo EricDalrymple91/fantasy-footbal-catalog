@@ -71,3 +71,6 @@ target/
 venv/
 
 db.sqlite3
+
+# RabbitMQ
+rabbitmq/
