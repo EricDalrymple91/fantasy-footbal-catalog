@@ -1,6 +1,6 @@
 import uuid
+from datetime import datetime, timezone
 
-import pendulum
 from django.db import models
 
 
@@ -78,4 +78,7 @@ class Player(CommonModel):
 
     @property
     def age(self):
-        return (pendulum.today("UTC") - self.birthdate).years
+        today = datetime.now(timezone.utc)
+        return (today.year - self.birthdate.year) - (
+            (today.month, today.day) < (self.birthdate.month, self.birthdate.day)
+        )

@@ -1,28 +1,32 @@
-FROM python:3.10-slim-bullseye
+FROM python:3.13-slim
 
 EXPOSE 8080
-ENV PYTHONPATH /ffcatalog
+ENV PATH=/ff/.venv/bin:/usr/local/bin:$PATH
+ENV PYTHONPATH=/ff
+ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
     && apt-get install -y \
-    binutils \
-    build-essential \
-    cron\
-    gdal-bin \
-    git \
-    libpq-dev \
-    libproj-dev \
-    sqlite3 \
-    libsqlite3-dev  \
+        curl \
+        gdal-bin \
+        postgresql-client \
     --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /ffcatalog
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-WORKDIR /ffcatalog
+RUN mkdir -p /ff
 
-COPY requirements.txt ./
-RUN pip install -r requirements.txt
+WORKDIR /ff
 
-COPY ./ /ffcatalog
+COPY manage.py pyproject.toml uv.lock ./
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv && \
+    uv sync --frozen --all-extras
+
+COPY ./ /ff
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --all-extras
 
 CMD ["/bin/bash"]
