@@ -1,25 +1,20 @@
-version: "3.9"
-
-x-service:
-  &default-service
-  entrypoint: pytest
-  build: .
+x-service: &default-service
+  build:
+    context: .
   environment:
+    DD_TRACE_STARTUP_LOGS: "false"
     DJANGO_SETTINGS_MODULE: fantasy_football_catalog.settings
-  image: fantasy-football-catalog:latest
+    PYTHONBREAKPOINT: "${PYTHONBREAKPOINT:-ipdb.set_trace}"
   restart: "no"
+  working_dir: /ff
+  image: fantasy-football-catalog:latest
   depends_on:
     db:
-      condition: service_started
-    redis:
-      condition: service_started
+      condition: service_healthy
   networks:
     - db
-    - redis
-    - rabbitmq
-  working_dir: /ffcatalog
   volumes:
-    - .:/ffcatalog
+    - ./fantasy_football_catalog:/ff/fantasy_football_catalog:cached
 
 services:
   test:
@@ -64,14 +59,20 @@ services:
     entrypoint: /bin/bash
 
   db:
-    image: keinos/sqlite3:latest
+    image: postgres
     restart: always
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/root/db/
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: fantasy_football_catalog
     networks:
       - db
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-d", "fantasy_football_catalog" ]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 2s
 
   redis:
     # aws elasticache is compatible with redis 5
@@ -81,26 +82,48 @@ services:
       - redis
 
   rabbitmq:
-    image: rabbitmq:3.9-management
-    hostname: my-rabbit
+    image: rabbitmq:3-management
+    restart: always
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
     volumes:
-      - ./rabbitmq/etc/definitions.json:/etc/rabbitmq/definitions.json
-      - ./rabbitmq/etc/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-      - ./rabbitmq/data:/var/lib/rabbitmq
-      - ./rabbitmq/logs:/var/log/rabbitmq/log
+      - mq_data:/var/lib/rabbitmq
     networks:
-      - rabbitmq
-    ports:
-      - 5672:5672
-      - 15672:15672
+      - mq_net
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 60s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+    # Set the following in docker-compose.override.yml for access to RabbitMQ's
+    # web UI.
+    #
+    # Please avoid commiting the ports block uncommented (may lead to port
+    # conflicts for devs in their local environments).
+    #
+    # Run `docker compose up rabbitmq` and visit http://localhost:15672/ . Use
+    # the user and password defined in the environment block above.
+    #
+    # ports:
+    #   - "15672:15672"
+
+  celery_worker:
+    <<: *default-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    entrypoint: "celery -A fantasy_football_catalog.celery_app worker --loglevel debug -n worker.local -Q fantasy-football-catalog"
+
 
 volumes:
   db_data:
+  mq_data:
 
 networks:
   db:
   redis:
-  rabbitmq:
+  mq_net:

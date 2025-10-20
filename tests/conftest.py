@@ -1,4 +1,5 @@
-import pendulum
+from datetime import datetime, timezone
+
 import pytest
 
 from fantasy_football_catalog.apps.catalog.models import (
@@ -56,7 +57,7 @@ def player_factory(team_factory, fantasy_team_factory):
                 weight=238,
                 college="Mississippi State",
                 nfl_draft_pick=135,
-                birthdate=pendulum.datetime(1993, 7, 29),
+                birthdate=datetime(1993, 7, 29, tzinfo=timezone.utc),
                 team=team,
             )
             player.fantasy_teams.add(fantasy_team)
